@@ -25,39 +25,37 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install SDK platform and build-tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      # Installs Gradle 8.5 directly, so no gradlew / wrapper files are needed.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.5'
 
-      - name: Ensure Gradle wrapper exists
-        run: |
-          if [ ! -f gradlew ]; then
-            gradle wrapper --gradle-version 8.5
-          fi
-          chmod +x gradlew
-
       - name: Decode keystore from secret
-        id: keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > app/keystore.jks
-            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "Keystore decoded."
           else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No KEYSTORE_BASE64 secret set; falling back to debug signing."
+            echo "No KEYSTORE_BASE64 secret set; using debug signing."
           fi
 
       - name: Build Debug APK
         if: github.event_name == 'pull_request'
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee build.log
 
       - name: Build Release APK
         if: github.event_name != 'pull_request'
@@ -66,7 +64,20 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
+
+      # Puts the real error on the run's Summary page so it is easy to read on a phone.
+      - name: Show build errors in summary
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          {
+            echo '### Build errors'
+            echo '```'
+            grep -E "^e: |^w: .*error|error:|FAILURE:|What went wrong|Could not |Execution failed|not found|Unresolved|SDK location" build.log | head -60
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Debug APK
         if: github.event_name == 'pull_request'
