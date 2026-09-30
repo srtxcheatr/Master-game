@@ -1,0 +1,6 @@
+{
+  "name": "BOOST MASTER",
+  "description": "Game booster and performance optimization utility",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -231,7 +231,7 @@ private fun StepCard(
                 .border(1.5.dp, if (done) AccentGreen else AccentCyan, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = done,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy))
             ) {

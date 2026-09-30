@@ -1,8 +1,7 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -20,30 +19,20 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-        aidl = true   // IShellService for the Shizuku UserService
+        aidl = false
     }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
-
-    // Signing config is read from environment variables (GitHub Actions).
-    // If no keystore is present, builds fall back to the default debug key so
-    // local and CI builds still produce an installable APK.
-    val keystoreFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
-    val hasKeystore = keystoreFile.exists() && !System.getenv("KEY_ALIAS").isNullOrBlank()
 
     signingConfigs {
-        if (hasKeystore) {
-            create("release") {
-                storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: ""
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
-            }
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
     }
 
@@ -52,12 +41,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = if (hasKeystore) signingConfigs.getByName("release")
-            else signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("debugConfig")
         }
         debug {
-            signingConfig = if (hasKeystore) signingConfigs.getByName("release")
-            else signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("debugConfig")
         }
     }
 
